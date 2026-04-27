@@ -77,10 +77,36 @@ npm run test:e2e   # Playwright (requires browsers installed)
    drag speed.
 3. Stop dragging — the chase decays over a few seconds and goes dark.
 
+### WLED live mirror (Phase 6)
+
+1. Power on a WLED node on the same LAN as the laptop running this app.
+2. After a few seconds the **WLED** panel populates the discovered devices
+   list. If it doesn't, paste the device's IP into the manual-add field.
+3. Click **Info** on the device to fetch its LED count.
+4. In **Calibration**, click **+ Binding** for each segment of the WLED strip
+   that maps to a bar in your layout. Set the pixel range and pick the bar
+   from the dropdown; tick **reverse** if the strip is wired tail-first.
+   Click **Save calibration**.
+5. Click **Mirror** on the device. The stage designer now reflects whatever
+   WLED is rendering pixel-for-pixel — drive it from WLED's phone app or
+   point LedFx at it and play music; the virtual stage tracks instantly.
+6. **Stop mirror** to return to the standalone simulator path; armed presets
+   (BeatPulse, SpinChase, etc.) take over again.
+
+Notes:
+
+- WLED only supports one live subscriber at a time. If LedFx's frontend or
+  another tool already had the live stream, our subscription will kick them
+  off.
+- Mirror mode is read-only — nothing this app does can affect WLED. If our
+  app crashes mid-show, his lights keep running.
+
 ## Known limitations (POC)
 
-- No real DMX/Art-Net hardware is exercised; the `ArtNetSink` is a logging
-  stub. See [decisions.md](./decisions.md#adr-002) for the upgrade path.
+- Phase 6 is **read-only**: the live mirror reflects WLED's state but
+  cannot drive it. Phase 7 adds a write-side override path so our custom
+  presets (spin-chase, hand-follow, beat-pulse) can briefly take over
+  WLED's output via its realtime WS protocol; LedFx auto-resumes after.
 - Beat detection is energy-onset only. Anything below the low-pass cutoff or
   with sustained energy fools it. Replace with `aubio` / Ableton Link for a
   production setup.
