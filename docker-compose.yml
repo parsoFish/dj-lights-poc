@@ -1,0 +1,23 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/dj_lights:/app/dj_lights
+      - ./backend/data:/app/data
+    environment:
+      DJ_LIGHTS_DATA_DIR: /app/data
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+    environment:
+      VITE_BACKEND_URL: http://backend:8000
+    depends_on:
+      - backend

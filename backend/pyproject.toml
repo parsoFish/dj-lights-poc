@@ -1,0 +1,62 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dj-lights"
+version = "0.1.0"
+description = "DJ Lights POC: modular preset-driven RGB lighting engine with simulator, CV-ready inputs, and abstracted hardware output."
+requires-python = ">=3.12"
+authors = [{ name = "David Parsonson", email = "david.g.parsonson@gmail.com" }]
+license = { text = "MIT" }
+dependencies = [
+    "click>=8.1",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "websockets>=12.0",
+    "pydantic>=2.6",
+    "pyartnet>=1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=4.1",
+    "httpx>=0.27",
+    "ruff>=0.4",
+    "mypy>=1.10",
+]
+
+[project.scripts]
+dj-lights = "dj_lights.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["dj_lights"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N", "SIM", "RUF"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_ignores = true
+warn_unreachable = true
+
+[[tool.mypy.overrides]]
+module = ["pyartnet.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "--cov=dj_lights --cov-report=term-missing --cov-fail-under=80"
+
+[tool.coverage.run]
+branch = true
+source = ["dj_lights"]
