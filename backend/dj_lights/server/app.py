@@ -27,10 +27,14 @@ def _data_dir() -> Path:
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     state = AppState.build(data_dir=_data_dir())
     app.state.dj_lights = state
+    await state.wled_discovery.start()
     state.engine_task = asyncio.create_task(state.engine.run())
     try:
         yield
     finally:
+        if state.wled_mirror is not None:
+            await state.wled_mirror.stop()
+        await state.wled_discovery.stop()
         state.engine.stop()
         if state.engine_task is not None:
             state.engine_task.cancel()
