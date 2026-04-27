@@ -21,17 +21,16 @@ can swap Canvas for Three.js without changing the backend or transport.
 
 ## ADR-002 — Output is abstracted behind `OutputSink`
 
-**Context.** The friend's bars are hand-built; the wire protocol is unknown.
-We don't want to block the POC on confirming DMX vs Art-Net vs sACN vs
-custom serial.
+**Context.** Originally the friend's bars were hand-built and the wire
+protocol unknown; we shipped an `ArtNetSink` stub against the abstract
+`OutputSink` interface so the POC could land before the protocol was
+confirmed.
 
-**Decision.** Define an `OutputSink` protocol; ship a `SimulatorSink` that
-encodes frames to a binary WS payload, and an `ArtNetSink` stub that logs
-but does not transmit. The engine writes to whichever sinks are registered.
-
-**Consequences.** The POC is fully demoable today via the simulator. When the
-real protocol is confirmed, only `outputs/artnet.py` (or its replacement)
-needs to be filled in. No engine, preset, or wire-format changes.
+**Update (Phase 6).** The friend's hardware turned out to be WLED firmware
+on a QuinLED ESP-32, not raw Art-Net. The Art-Net stub was retired in
+favour of a WLED-native client (`wled/client.py`, `wled/live_ws.py`). The
+`OutputSink` protocol stays — Phase 7's WLED-realtime override path
+implements it for write-side compositing.
 
 ## ADR-003 — Browser MediaPipe Hands now, Orin Nano later
 
@@ -62,6 +61,26 @@ between an event kind and an `Effect` (which holds the rendering math).
 The structure is already shaped like the eventual DSL (trigger kind +
 effect + target group + params), so swapping in a JSON/YAML loader later
 won't require redesign.
+
+## ADR-006 — Sidecar to LedFx + WLED, never in the middle
+
+**Context.** The friend's existing rig is LedFx → Art-Net → WLED → LEDs.
+Phase 6 adds our app to give him a stage preview; later phases add control
+plane and custom presets. Two architectures fit: literally proxy the
+Art-Net stream (sit between LedFx and WLED) or run as a sibling that reads
+WLED's state via its own WebSocket.
+
+**Decision.** Sidecar. We subscribe to WLED's `/ws` `lv:true` stream as a
+read-only consumer; we never intercept Art-Net. Phase 7 will write to WLED
+directly via its realtime WS protocol *only* when our custom presets take
+over (not as a continuous proxy).
+
+**Consequences.** Reliability win — if our app crashes, his show keeps
+running because the LedFx → WLED data path is untouched. No latency added
+to LedFx's audio reactivity. Constraint accepted: WLED only allows one
+live subscriber at a time, so coordinating with LedFx's frontend is
+necessary if a user has both open. The frontend rarely subscribes; the
+collision is theoretical for the friend's setup.
 
 ## ADR-005 — Channel-max compositing for layered presets
 

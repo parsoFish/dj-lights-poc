@@ -97,6 +97,71 @@ def test_arm_unknown_preset(app: TestClient) -> None:
     assert r.status_code == 404
 
 
+def test_wled_devices_list_starts_empty(app: TestClient) -> None:
+    with app:
+        r = app.get("/api/wled/devices")
+    assert r.status_code == 200
+    assert r.json() == {"devices": []}
+
+
+def test_wled_add_manual_device(app: TestClient) -> None:
+    with app:
+        r = app.post("/api/wled/devices", json={"host": "10.0.0.42", "name": "Front Bars"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["host"] == "10.0.0.42"
+    assert body["name"] == "Front Bars"
+    assert body["source"] == "manual"
+
+
+def test_wled_add_manual_requires_host(app: TestClient) -> None:
+    with app:
+        r = app.post("/api/wled/devices", json={})
+    assert r.status_code == 400
+
+
+def test_wled_get_calibration_returns_empty_for_unknown_layout(app: TestClient) -> None:
+    with app:
+        r = app.get("/api/wled/calibration/sample-5bar")
+    assert r.status_code == 200
+    assert r.json() == {"layout_name": "sample-5bar", "bindings": []}
+
+
+def test_wled_put_and_get_calibration_round_trip(app: TestClient) -> None:
+    payload = {
+        "bindings": [
+            {"device_id": "d1", "pixel_start": 0, "pixel_end": 24, "bar_id": "right-vertical"},
+            {"device_id": "d1", "pixel_start": 24, "pixel_end": 44, "bar_id": "front-right", "reverse": True},
+        ]
+    }
+    with app:
+        r = app.put("/api/wled/calibration/sample-5bar", json=payload)
+        assert r.status_code == 200
+        r2 = app.get("/api/wled/calibration/sample-5bar")
+    body = r2.json()
+    assert len(body["bindings"]) == 2
+    assert body["bindings"][1]["reverse"] is True
+
+
+def test_wled_put_calibration_rejects_bad_body(app: TestClient) -> None:
+    with app:
+        r = app.put("/api/wled/calibration/sample-5bar", json={"bindings": "no"})
+    assert r.status_code == 400
+
+
+def test_wled_mirror_start_unknown_device(app: TestClient) -> None:
+    with app:
+        r = app.post("/api/wled/mirror/start", json={"device_id": "ghost"})
+    assert r.status_code == 404
+
+
+def test_wled_mirror_stop_when_not_running(app: TestClient) -> None:
+    with app:
+        r = app.post("/api/wled/mirror/stop")
+    assert r.status_code == 200
+    assert r.json() == {"mirroring": False}
+
+
 def test_ws_bridge_streams_frames_and_accepts_events(app: TestClient) -> None:
     with app, app.websocket_connect("/ws/bridge") as ws:
         app.post("/api/presets/beat-pulse/arm")
