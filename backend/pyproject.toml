@@ -7,7 +7,7 @@ name = "dj-lights"
 version = "0.1.0"
 description = "DJ Lights POC: modular preset-driven RGB lighting engine with simulator, CV-ready inputs, and abstracted hardware output."
 requires-python = ">=3.12"
-authors = [{ name = "David Parsonson", email = "david.g.parsonson@gmail.com" }]
+authors = [{ name = "David Parsonson" }]
 license = { text = "MIT" }
 dependencies = [
     "click>=8.1",
