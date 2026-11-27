@@ -9,6 +9,7 @@ import { makeDefaultBar } from "./stage/geometry.js";
 import { Store } from "./state/store.js";
 import { getLayout, putLayout } from "./transport/api.js";
 import { Bridge } from "./transport/bridge.js";
+import { WledPanel } from "./wled/WledPanel.js";
 import type { LedFrame, StageLayout } from "./types.js";
 
 const LAYOUT_NAME = "sample-5bar";
@@ -58,6 +59,9 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
           <canvas id="spin-canvas" width="180" height="180"></canvas>
           <span class="muted">Drag to spin -> spin events</span>
         </div>
+        <hr style="border-color: var(--line); margin: 12px 0;" />
+        <h2>WLED <span class="muted">(live mirror from real hardware)</span></h2>
+        <div id="wled-panel"></div>
         <hr style="border-color: var(--line); margin: 12px 0;" />
         <h2>Presets</h2>
         <div id="preset-panel"></div>
@@ -214,4 +218,9 @@ export async function bootstrap(root: HTMLElement): Promise<void> {
 
   const presetPanel = new PresetPanel(root.querySelector<HTMLDivElement>("#preset-panel")!);
   await presetPanel.refresh();
+
+  new WledPanel(root.querySelector<HTMLDivElement>("#wled-panel")!, {
+    layoutName: LAYOUT_NAME,
+    layout: () => layoutStore.get(),
+  });
 }

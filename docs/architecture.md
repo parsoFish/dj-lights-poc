@@ -2,30 +2,47 @@
 
 ## High-level dataflow
 
+The app runs in two complementary modes:
+
 ```
-  [Audio]   [MediaPipe Hands]   [Manual UI]   [(future) Orin CV]
-     |             |                 |                |
-     v             v                 v                v
-   +-----------------------------------------------------+
-   |                   Event Bus                         |
-   +-----------------------------------------------------+
-                          |
-                          v
-   +-----------------------------------------------------+
-   |                     Engine                          |
-   |  StageLayout + active Presets + composable Effects  |
-   |   60 FPS frame loop  ->  LedFrame                   |
-   +-----------------------------------------------------+
-                          |
-                          v
-   +-----------------------------------------------------+
-   |                 OutputSink interface                |
-   +-----------------------------------------------------+
-        |                       |
-        v                       v
-   [Simulator WS]            [Art-Net stub]
-    (frontend)                (real bars later)
+  Standalone mode (no real hardware):
+
+    [Audio] [MediaPipe] [Manual] [Spin]            [(future) Orin CV]
+       \      |          |        /
+        v     v          v       v
+    +---------------------------------+
+    |          Event Bus              |
+    +---------------------------------+
+                  |
+                  v
+    +---------------------------------+
+    |  Engine (presets + compositing) |
+    |  60 fps -> LedFrame             |
+    +---------------------------------+
+                  |
+                  v
+    [Simulator WS  ->  every browser]
+
+
+  Mirror mode (Phase 6, sidecar to LedFx + WLED):
+
+    [LedFx] -- Art-Net --> [WLED] -- pixels --> [LEDs]
+                              ^
+                              |  /ws lv:true (live frame stream)
+                              v
+                          [Our app]
+                              |
+                              v
+    [Engine.mirror_mode = True; preset compositing suppressed]
+                              |
+                              v
+    [Simulator WS  ->  every browser]
 ```
+
+In mirror mode the engine still drains its event bus (so preset clocks stay
+fresh) but does not produce frames; what every browser sees is whatever
+WLED is rendering, decoded from its WebSocket. Phase 7 will add a write-side
+override path so custom presets can take over WLED's output briefly.
 
 ## Module map
 
@@ -43,7 +60,11 @@
 | `inputs/cv_orin_stub.py` | Scaffolded Orin Nano CV worker; same event contract as `cv_hands`. |
 | `outputs/base.py` | `OutputSink` protocol. |
 | `outputs/simulator.py` | Encodes `LedFrame` to binary; pushes to subscribed WS clients. |
-| `outputs/artnet.py` | Stub; will use `pyartnet` once hardware protocol is confirmed. |
+| `wled/discovery.py` | mDNS browser for `_wled._tcp.local.` + manual-add fallback. |
+| `wled/client.py` | HTTP client for WLED's JSON API (`/json/info`, `/json/state`). |
+| `wled/live_ws.py` | WS subscriber to WLED's `/ws` live LED stream + binary frame decoder. |
+| `wled/calibration.py` | Pixel-range → bar binding model + JSON persistence. |
+| `wled/mirror.py` | Bridges WLED live frames into the engine via `push_external_frame`. |
 | `server/{app,api,ws,state}.py` | FastAPI factory + REST endpoints + WS bridge + assembled app state. |
 | `storage/layout_store.py` | JSON persistence for `StageLayout`. |
 | `cli.py` | `dj-lights serve` Click entry. |
@@ -61,7 +82,9 @@
 | `stage/StageDesigner.ts` | 2D top-down editor: drag to move, shift+drag to rotate, lit segments overlay. |
 | `stage/StagePreview.ts` | Strip-style live preview. |
 | `presets/PresetPanel.ts` | Arm/disarm UI. |
-| `inputs/audio.ts` | Web Audio energy-onset beat detector. |
+| `wled/WledPanel.ts` | Discovery list + calibration table + mirror toggle. |
+| `transport/wledApi.ts` | REST client for `/api/wled/*`. |
+| `inputs/audio.ts` | Web Audio energy-onset beat detector (standalone-mode). |
 | `inputs/handTracker.ts` | MediaPipe Hands → `hand_position` events. |
 | `inputs/spinWheel.ts` | Drag wheel → `spin` events. |
 | `app.ts` | Top-level wiring. |

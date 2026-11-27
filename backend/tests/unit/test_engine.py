@@ -135,6 +135,32 @@ def test_dominance_dims_other_presets() -> None:
     assert 30 <= pixel[2] <= 80
 
 
+@pytest.mark.asyncio
+async def test_engine_mirror_mode_forwards_external_frames_only() -> None:
+    """In mirror mode the loop should not produce its own frames; only externally-pushed frames reach subscribers."""
+
+    layout = _layout()
+    eng = Engine(layout=layout, fps=120, mirror_mode=True)
+    eng.arm(BeatPulse())  # would normally produce frames; should be suppressed
+    q = eng.subscribe_frames()
+    task = asyncio.create_task(eng.run())
+    try:
+        # Wait briefly; no frames should arrive.
+        with pytest.raises(asyncio.TimeoutError):
+            await asyncio.wait_for(q.get(), timeout=0.1)
+        # Now push an external frame; it should arrive.
+        external = LedFrame(layout_version=0, timestamp_ms=0.0,
+                            bars=(BarFrame("a", ((255, 0, 0), (255, 0, 0))),))
+        eng.push_external_frame(external)
+        f = await asyncio.wait_for(q.get(), timeout=0.5)
+        assert f is external
+    finally:
+        eng.stop()
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+
 def test_zero_dominance_keeps_normal_compositing() -> None:
     layout = _layout()
     eng = Engine(layout=layout)

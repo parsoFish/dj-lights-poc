@@ -18,11 +18,27 @@
 - **pytest / pytest-asyncio / pytest-cov** — tests + coverage.
 - **ruff / mypy** — lint + type check.
 
-## Lighting protocols (for the future Art-Net sink)
+## WLED + LedFx (Phase 6 integration target)
 
-- **pyartnet** — Python Art-Net 4 client. <https://github.com/spacemanspiff2007/PyArtNet>
-- **sACN / E1.31** — alternative streaming protocol. Library:
-  <https://github.com/Hundemeier/sacn>
+- **WLED firmware** — <https://kno.wled.ge/>
+- **WLED JSON API** — <https://kno.wled.ge/interfaces/json-api/>
+- **WLED WebSocket** — <https://kno.wled.ge/interfaces/websocket/> (Phase 6
+  uses `{"lv":true}` for the live LED stream; binary frame format is `b'L' +
+  version + RGB triples`, see `wled/live_ws.py`.)
+- **zeroconf** — Python mDNS browser. <https://pypi.org/project/zeroconf/>
+- **LedFx** — audio-reactive engine the friend already runs.
+  <https://github.com/ledfx/ledfx>
+- **LedFx HTTP API** — <https://docs.ledfx.app/en/stable/apis/api.html>
+  (no auth on LAN; control flows through *virtuals*, not devices). Phase 7
+  will hit `/api/scenes` and `/api/virtuals/*/effects`.
+
+## Lighting protocols (Phase 7+ override path)
+
+- **WLED realtime WS** — write side counterpart of the live read; same
+  socket. Used by the Phase 7 override path.
+- **sACN / E1.31** — multicast alternative to Art-Net. Library:
+  <https://github.com/Hundemeier/sacn>. Out of scope for the friend's
+  setup but relevant for other rigs.
 - **DMX-USB-Pro / Open DMX** — for direct USB→DMX dongles via PySerial.
 
 ## Hand & gesture inference (for the future Orin Nano source)

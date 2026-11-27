@@ -66,6 +66,11 @@ class Engine:
     active_presets: dict[str, Preset] = field(default_factory=dict)
     _frame_listeners: list[asyncio.Queue[LedFrame]] = field(default_factory=list)
     _running: bool = False
+    # When True, the run loop suppresses local preset compositing and only
+    # forwards frames pushed in via `push_external_frame()` (the WLED mirror
+    # path). Lets the same engine serve as standalone simulator OR as a
+    # passthrough for whatever the real lights are showing.
+    mirror_mode: bool = False
 
     @property
     def tick_seconds(self) -> float:
@@ -92,6 +97,16 @@ class Engine:
     def unsubscribe_frames(self, q: asyncio.Queue[LedFrame]) -> None:
         with contextlib.suppress(ValueError):
             self._frame_listeners.remove(q)
+
+    def push_external_frame(self, frame: LedFrame) -> None:
+        """Inject a frame from outside the engine's preset path (e.g. WLED mirror).
+
+        Goes straight to the broadcast queues; no compositing, no presets.
+        Caller is responsible for rate-limiting if frames arrive faster than
+        consumers can drain.
+        """
+
+        self._broadcast_frame(frame)
 
     def dispatch(self, event: Event) -> None:
         for preset in self.active_presets.values():
@@ -129,7 +144,12 @@ class Engine:
         return _composite(self.layout, [f for _, f, _ in rendered], t_ms, self.layout_version)
 
     async def run(self) -> None:
-        """Run the loop until cancelled. Drains the event bus + emits frames."""
+        """Run the loop until cancelled. Drains the event bus + emits frames.
+
+        In mirror mode the loop only drains events (so presets keep their
+        clocks fresh for when mirroring stops) and otherwise idles — frames
+        come in via :meth:`push_external_frame` from the WLED mirror.
+        """
 
         self._running = True
         events_q = self.bus.subscribe()
@@ -139,7 +159,6 @@ class Engine:
                 now = time.monotonic()
                 t_ms = (now - start) * 1000.0
 
-                # Drain available events without blocking the tick.
                 while True:
                     try:
                         ev = events_q.get_nowait()
@@ -147,11 +166,10 @@ class Engine:
                         break
                     self.dispatch(ev)
 
-                frame = self.render_once(t_ms)
-                self._broadcast_frame(frame)
+                if not self.mirror_mode:
+                    frame = self.render_once(t_ms)
+                    self._broadcast_frame(frame)
 
-                # Sleep the remainder of the tick, ignoring drift accumulation
-                # (POC: simple, predictable; tighten later if needed).
                 await asyncio.sleep(self.tick_seconds)
         finally:
             self.bus.unsubscribe(events_q)

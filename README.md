@@ -16,9 +16,12 @@ The aim is to **frame the system out and demonstrate four scenarios**:
    chase synced to the spin's RPM and direction. Showcases the modular
    `trigger + effect + target group + params` recipe.
 
-Output is rendered to a built-in **simulator** sink. An **Art-Net** sink is
-scaffolded so swapping in real hardware is a one-file job once the friend's
-bars' protocol is confirmed.
+Output is rendered to a built-in **simulator** sink. Phase 6 adds a live
+mirror mode that subscribes to a real WLED node's WebSocket and renders
+whatever it's currently displaying — closing the gap of "no stage designer
+that previews what LedFx is actually doing on the bars." See
+[docs/runbook.md](./docs/runbook.md#wled-live-mirror-phase-6) for the
+demo steps.
 
 ## Layout
 
